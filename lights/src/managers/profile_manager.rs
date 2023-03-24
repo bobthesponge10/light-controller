@@ -5,7 +5,12 @@ use fs_extra;
 use toml_edit::{Document, value};
 use log::*;
 use serde_json::{from_str, Value};
-use libloading::*;
+
+#[cfg(windows)]
+use libloading::os::windows::*;
+#[cfg(not(windows))]
+use libloading::os::unix::*;
+
 
 use crate::structs::profile::*;
 
@@ -197,6 +202,7 @@ impl ProfileLoader{
             Ok(x) => x
         };
         debug!("Loaded Function for {}", &self.name);
+        
         let boxed_raw = constructor();
 
         let plugin = Box::from_raw(boxed_raw);
