@@ -125,8 +125,10 @@ impl ProfileLoader{
         }
 
         if success{
+            debug!("Sucessfully compiled {}", &self.name);
             return Ok(command_output);
         }
+        debug!("Failed to compiled {}", &self.name);
         return Err(command_output);
     }
 
@@ -151,19 +153,27 @@ impl ProfileLoader{
             ProfileLoaderState::Compiled(_) => {
                 let mut p = Path::new(&self.dir).join(&self.name).join("target");
                 p = p.join("debug");
-                p = p.join("main");
 
-                debug!("{}", &p.to_string_lossy());
+                #[cfg(windows)]
+                {p = p.join("main.dll")};
+
+                #[cfg(not(windows))]
+                {p = p.join("main.so")};
                 
+                debug!("Attempting load at {:?}", p);
+
                 match Library::new(&p){
                     Ok(lib) => {
-                        debug!("Loaded Library for {}", self.name);
+                        debug!("Loaded library for {}", self.name);
 
                         self.library.push(lib);
                         self.state = ProfileLoaderState::Loaded;
                         Ok(())
                     },
-                    Err(_) => Err(io::Error::new(io::ErrorKind::Other, "Failed to load profile"))
+                    Err(_) => {
+                        debug!("Failed to load library for {}", &self.name);
+                        Err(io::Error::new(io::ErrorKind::Other, "Failed to load profile"))
+                    }
                 }
             },
             _ => Ok(())

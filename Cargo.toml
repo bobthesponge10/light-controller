@@ -9,6 +9,3 @@ edition = "2021"
 lights = {path = "lights"}
 log = "0.4.17"
 env_logger = "0.10.0"
-
-[lib]
-crate-type = ["cdylib", "rlib"]
