@@ -170,8 +170,8 @@ impl ProfileLoader{
                         self.state = ProfileLoaderState::Loaded;
                         Ok(())
                     },
-                    Err(_) => {
-                        debug!("Failed to load library for {}", &self.name);
+                    Err(x) => {
+                        debug!("Failed to load library for {}: Error: {}", &self.name, x);
                         Err(io::Error::new(io::ErrorKind::Other, "Failed to load profile"))
                     }
                 }
