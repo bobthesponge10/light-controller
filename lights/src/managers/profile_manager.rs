@@ -158,7 +158,7 @@ impl ProfileLoader{
                 {p = p.join("main.dll")};
 
                 #[cfg(not(windows))]
-                {p = p.join("main.so")};
+                {p = p.join("libmain.so")};
                 
                 debug!("Attempting load at {:?}", p);
 
@@ -171,7 +171,8 @@ impl ProfileLoader{
                         Ok(())
                     },
                     Err(x) => {
-                        debug!("Failed to load library for {}: Error: {}", &self.name, x);
+                        error!("Failed to load library for {}", &self.name);
+                        error!("Error: {}", x);
                         Err(io::Error::new(io::ErrorKind::Other, "Failed to load profile"))
                     }
                 }

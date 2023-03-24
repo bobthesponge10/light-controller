@@ -9,4 +9,4 @@ lights = {path = "../../lights"}
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-name="main"
+name = "main"
