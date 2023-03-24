@@ -1,9 +1,15 @@
 use lights::managers::profile_manager::*;
 use log::*;
+use std::env;
 
 
 
 fn main(){
+    #[cfg(not(debug_assertions))]
+    env::set_var("RUST_LOG", "INFO");
+    #[cfg(debug_assertions)]
+    env::set_var("RUST_LOG", "DEBUG");
+
     env_logger::init();
 
     info!("Starting");

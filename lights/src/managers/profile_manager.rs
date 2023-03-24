@@ -84,6 +84,7 @@ impl ProfileLoader{
 
         let mut command = Command::new("cargo");
         command.args(["build", "--manifest-path", &format!("{}", path), "--message-format", "json-diagnostic-rendered-ansi"]);
+
         let output = match command.output(){
             Ok(x) => match String::from_utf8(x.stdout){
                 Ok(y) => y,
@@ -148,7 +149,9 @@ impl ProfileLoader{
     pub unsafe fn load_library(&mut self) -> io::Result<()>{
         return match &self.state{
             ProfileLoaderState::Compiled(_) => {
-                let p = Path::new(&self.dir).join(&self.name).join("target").join("debug").join("main");
+                let mut p = Path::new(&self.dir).join(&self.name).join("target");
+                p = p.join("debug");
+                p = p.join("main");
 
                 debug!("{}", &p.to_string_lossy());
                 
