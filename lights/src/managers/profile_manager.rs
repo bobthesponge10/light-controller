@@ -189,7 +189,7 @@ impl ProfileLoader{
     }
 
     pub unsafe fn generate_instance(&mut self, name: String) -> Result<(), ()>{
-        type ProfileCreate = unsafe fn() -> *mut dyn ProfileInterface;
+        type ProfileCreate = extern fn() -> *mut dyn ProfileInterface;
         let lib = match self.library.last(){
             Some(x) => x,
             None => return Err(())
