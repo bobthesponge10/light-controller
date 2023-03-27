@@ -1,19 +1,19 @@
 use super::light_primitive::*;
 use crate::utils::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LightStrip{
     lights: Vec<Light>,
     pin:u8,
     length: usize
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Bulb{
     light: Light,
     ip: String,
     name: String
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BulbGroup{
     bulbs: Vec<Bulb>,
     length: usize,
@@ -21,8 +21,13 @@ pub struct BulbGroup{
 }
 
 impl LightStrip{
-    pub fn new(pin: u8, length: usize) -> LightStrip{
-        let v: Vec<Light> = Vec::with_capacity(length);
+    pub fn new(pin: u8, length: usize, type_: Light) -> LightStrip{
+        let mut base = type_.clone();
+        base.clear();
+        let mut v: Vec<Light> = Vec::with_capacity(length);
+        for _ in 0..length{
+            v.push(base.clone());
+        }
         return LightStrip {lights: v, pin: pin, length: length}
     }
 }
@@ -87,9 +92,26 @@ impl LightVec for BulbGroup{
     }
 }
 
-#[derive(Debug)]
-enum LightingTypes{
+#[derive(Debug, Clone)]
+pub enum LightingTypes{
     LightStrip(LightStrip),
     Bulb(Bulb),
     BulbGroup(BulbGroup)
+}
+
+impl LightVec for LightingTypes{
+    fn _get_lights_mut(&mut self) -> Vec<&mut Light>{
+        return match self{
+            LightingTypes::LightStrip(x) => x._get_lights_mut(),
+            LightingTypes::BulbGroup(x) => x._get_lights_mut(),
+            LightingTypes::Bulb(x) => x._get_lights_mut()
+        }
+    }
+    fn _get_lights(&self) -> Vec<&Light> {
+        return match self{
+            LightingTypes::LightStrip(x) => x._get_lights(),
+            LightingTypes::BulbGroup(x) => x._get_lights(),
+            LightingTypes::Bulb(x) => x._get_lights()
+        }
+    }
 }

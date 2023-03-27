@@ -12,7 +12,8 @@ use libloading::os::windows::*;
 use libloading::os::unix::*;
 
 
-use crate::structs::profile::*;
+use crate::managers::light_manager::LightManager;
+use crate::structs::profile::{*, self};
 
 
 
@@ -29,12 +30,13 @@ pub struct ProfileLoader{
     name: String,
     library: Vec<Library>,
     instances: Vec<Profile>,
+    interface: Option<Box<dyn ProfileInterface>>,
     state: ProfileLoaderState
 }
 
 impl ProfileLoader{
     pub fn new(dir: String, name: String) -> ProfileLoader{
-        return ProfileLoader{dir: dir, name: name, library: Vec::new(), instances: Vec::new(), state: ProfileLoaderState::Unloaded};
+        return ProfileLoader{dir: dir, name: name, library: Vec::new(), instances: Vec::new(), interface: None, state: ProfileLoaderState::Unloaded};
     }
 
     fn create_new_profile(&self) -> io::Result<()>{
@@ -156,6 +158,8 @@ impl ProfileLoader{
     pub unsafe fn load_library(&mut self) -> io::Result<()>{
         return match &self.state{
             ProfileLoaderState::Compiled(_) => {
+
+                // Generate Library path
                 let mut p = Path::new(&self.dir).join(&self.name).join("target");
                 p = p.join("debug");
 
@@ -167,61 +171,78 @@ impl ProfileLoader{
                 
                 debug!("Attempting load at {:?}", p);
 
+                // Attempt to load the library
                 match Library::new(&p){
                     Ok(lib) => {
                         debug!("Loaded library for {}", self.name);
 
                         self.library.push(lib);
                         self.state = ProfileLoaderState::Loaded;
-                        Ok(())
                     },
                     Err(x) => {
                         error!("Failed to load library for {}", &self.name);
                         error!("Error: {}", x);
-                        Err(io::Error::new(io::ErrorKind::Other, "Failed to load profile"))
+                        return Err(io::Error::new(io::ErrorKind::Other, "Failed to load profile"))
                     }
                 }
+
+                type ProfileCreate = extern fn() -> *mut dyn ProfileInterface;
+                let lib = match self.library.last(){
+                    Some(x) => x,
+                    None => return Err(io::Error::new(io::ErrorKind::Other, "Failed to load profile"))
+                };
+                let constructor: Symbol<ProfileCreate> = match lib.get(b"_plugin_create"){
+                    Err(_) => {
+                        debug!("Failed to find function");
+                        return Err(io::Error::new(io::ErrorKind::Other, "Failed to find load function"))},
+                    Ok(x) => x
+                };
+                debug!("Loaded Function for {}", &self.name);
+
+                let boxed_raw = constructor();
+
+                let plugin = Box::from_raw(boxed_raw);
+                debug!("Loaded plugin: {}", plugin.profile_name());
+
+                let boxed_raw = constructor();
+
+                let plugin = Box::from_raw(boxed_raw);
+                self.interface = Some(plugin);
+
+                self.state = ProfileLoaderState::Loaded;
+                
+                Ok(())
             },
             _ => Ok(())
         };
-        
-
     }
 
-    pub unsafe fn generate_instance(&mut self, name: String) -> Result<(), ()>{
-        type ProfileCreate = extern fn() -> *mut dyn ProfileInterface;
-        let lib = match self.library.last(){
-            Some(x) => x,
-            None => return Err(())
+    pub fn generate_instance(&mut self, name: String, light_manager: &LightManager) -> Result<(), ()>{
+        return match &self.state{
+            ProfileLoaderState::Loaded =>{
+                let interface = match &self.interface {
+                    Some(x) => x,
+                    None => return Err(())
+                };
+                let mut p = Profile::new( name, false, false, light_manager.new_template());
+                interface.created(&mut p);
+                self.instances.push(p);
+                debug!("Created instance of {}, with name {}", interface.profile_name(), &self.name);
+                Ok(())
+            }
+            _ => Err(())
         };
-
-        let constructor: Symbol<ProfileCreate> = match lib.get(b"_plugin_create"){
-            Err(_) => {
-                debug!("Failed to find function");
-                return Err(())},
-            Ok(x) => x
-        };
-        debug!("Loaded Function for {}", &self.name);
-        
-        let boxed_raw = constructor();
-
-        let plugin = Box::from_raw(boxed_raw);
-        debug!("Loaded plugin: {}", plugin.profile_name());
-        
-        let p = Profile::new(plugin, name, false, false);
-
-        self.instances.push(p);
-        
-        return Ok(());
     }
 
     pub fn unload(&mut self) {
-        debug!("Unloading plugins");
+        debug!("Unloading plugins for {}", &self.name);
 
         for profile in self.instances.drain(..) {
-            trace!("Firing on_plugin_unload for {:?}", profile.profile_name());
+            trace!("Firing on_plugin_unload for {:?}", profile.instance_name());
             //plugin.on_plugin_unload();
         }
+        self.instances.clear();
+        self.interface = None;
         
         for lib in self.library.drain(..) {
             drop(lib);
@@ -237,10 +258,20 @@ impl ProfileLoader{
         
     }
 
+    pub fn update(&mut self){
+        match &self.interface{
+            None => return,
+            Some(x) => {
+                for i in &mut self.instances{
+                    x.update(i)
+                }
+            }
+        }
+    }
+
 }
 impl Drop for ProfileLoader {
     fn drop(&mut self) {
-        debug!("Dropping");
         if !self.instances.is_empty() || !self.library.is_empty() {
             self.unload();
         }

@@ -10,7 +10,7 @@ impl ProfileInterface for profile{
     fn profile_name(&self) -> String{
         return "Default Profile Name".to_string();
     }
-    // fn update(&mut self) -> (){}
+    fn update(&self, parent: &mut Profile) -> (){}
 }
 
 

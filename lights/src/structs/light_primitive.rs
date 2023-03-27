@@ -1,4 +1,5 @@
 use super::color::*;
+use crate::utils::temp_to_color;
 
 pub enum Res{
     Color(Color),
@@ -37,7 +38,7 @@ pub struct TLight{
     transparency: u8
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Light{
     RGB(RgbLight),
     RGBT(RgbtLight),
@@ -95,6 +96,37 @@ impl TranspT for Light{
         }
     }
 }
+
+impl RgbLight {
+    pub fn as_string(&self) -> String{
+        return self.color.as_string();
+    }
+}
+impl RgbtLight {
+    pub fn as_string(&self) -> String{
+        return self.color.as_string();
+    }
+}
+impl TLight {
+    pub fn as_string(&self) -> String{
+        return temp_to_color(self.temp).as_string();
+    }
+}
+impl Light{
+    pub fn clear(&mut self){
+        self.set_color(Color::new(0, 0, 0));
+        self.set_temp(0);
+        self.set_transp(255);
+    }
+    pub fn as_string(&self) -> String{
+        return match self{
+            Self::RGB(x) => x.as_string(),
+            Self::RGBT(x) => x.as_string(),
+            Self::T(x) => x.as_string()
+        }
+    }
+}
+
 pub trait LightVec{
     fn _get_lights_mut(&mut self) -> Vec<&mut Light>;
     fn _get_lights(&self) -> Vec<&Light>;
@@ -114,6 +146,25 @@ pub trait LightVec{
     fn set_transp(&mut self, transp: u8) -> &mut Self{
         for i in self._get_lights_mut(){
             i.set_transp(transp);
+        }
+        return self;
+    }
+    fn set_color_index(&mut self, color: Color, index: usize) -> &mut Self{
+        if self.size() > index{
+            self._get_lights_mut()[index].set_color(color);
+        }
+
+        return self;
+    }
+    fn set_temp_index(&mut self, temp: u32, index: usize) -> &mut Self{
+        if self.size() > index{
+            self._get_lights_mut()[index].set_temp(temp);
+        }
+        return self;
+    }
+    fn set_transp_index(&mut self, transp: u8, index: usize) -> &mut Self{
+        if self.size() > index{
+            self._get_lights_mut()[index].set_transp(transp);
         }
         return self;
     }
@@ -156,5 +207,31 @@ pub trait LightVec{
         }
 
         return Res::Mixed;
+    }
+
+    fn size(&self) -> usize{
+        return self._get_lights().len();
+    }
+
+    fn as_string(&self) -> String{
+        let max = 20;
+        let mut out = String::new();
+        let s = self.size();
+        for (index, i) in self._get_lights().iter().enumerate(){
+            if s <= max || index < max/2 || s-index <= max/2{
+                out += i.as_string().as_str(); 
+                if s > max && index == max/2-1{
+                    out += "...";
+                }
+            }
+        }
+        return out;
+    }
+
+
+    fn clear(&mut self){
+        for i in self._get_lights_mut(){
+            i.clear();
+        }
     }
 }
