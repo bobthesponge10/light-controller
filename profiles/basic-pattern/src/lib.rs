@@ -38,6 +38,8 @@ impl ProfileInterface for profile{
             }
         }
 
+        //println!("{}", parent.m().as_string());
+
         current += 1;
         if current >= max{
             current = 0;

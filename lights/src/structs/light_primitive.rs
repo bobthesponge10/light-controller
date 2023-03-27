@@ -101,15 +101,24 @@ impl RgbLight {
     pub fn as_string(&self) -> String{
         return self.color.as_string();
     }
+    pub fn default_enum() -> Light{
+        return Light::RGB(RgbLight::default());
+    }
 }
 impl RgbtLight {
     pub fn as_string(&self) -> String{
         return self.color.as_string();
     }
+    pub fn default_enum() -> Light{
+        return Light::RGBT(RgbtLight::default());
+    }
 }
 impl TLight {
     pub fn as_string(&self) -> String{
         return temp_to_color(self.temp).as_string();
+    }
+    pub fn default_enum() -> Light{
+        return Light::T(TLight::default());
     }
 }
 impl Light{

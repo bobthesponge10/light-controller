@@ -1,6 +1,5 @@
-use lights::managers::{profile_manager::*, light_manager::*};
-use lights::structs::light_types::{LightingTypes, LightStrip};
-use lights::structs::light_primitive::{Light, RgbLight};
+use lights::lighting_system::*;
+use lights::structs::{light_types::*, light_primitive::*};
 use log::*;
 use std::env;
 
@@ -18,28 +17,15 @@ fn main(){
 
     let profiles_dir = "profiles".to_string();
 
-    let mut lights: LightManager = LightManager::new();
-    lights.add_light(LightingTypes::LightStrip(LightStrip::new(0, 300, Light::RGB(RgbLight::default()))));
+    let mut system = System::new(profiles_dir);
+    system.init();
 
+    _ = system.create_instance("basic-pattern".to_string(), "Basic Pattern Test".to_string());
+    system.get_instance_mut("basic-pattern".to_string(), "Basic Pattern Test".to_string()).unwrap().set_on(true);
+    _ = system.add_light(LightStrip::new_enum("main strip".to_string(), 0, 300, RgbLight::default_enum()));
 
-
-    let mut p1 = ProfileLoader::new(profiles_dir.clone(), "test2".to_string());
-    let mut p2 = ProfileLoader::new(profiles_dir.clone(), "basic-pattern".to_string());
-
-    let mut profiles = vec![p1, p2];
-
-    for i in &mut profiles{
-        i.new_profile();
-        i.compile_profile();
-        unsafe{
-            i.load_library();
-        }
-        i.t()
-    }
-
-    profiles[1].generate_instance("TEST TEST TEST".to_string(), &lights);
-    for i in 0..500{
-        profiles[1].update();
+    for _ in 0..500{
+        system.update();
     }
 
 

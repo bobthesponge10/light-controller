@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::{fs, io};
 use std::process::Command;
@@ -13,7 +14,7 @@ use libloading::os::unix::*;
 
 
 use crate::managers::light_manager::LightManager;
-use crate::structs::profile::{*, self};
+use crate::structs::profile::*;
 
 
 
@@ -29,17 +30,25 @@ pub struct ProfileLoader{
     dir: String,
     name: String,
     library: Vec<Library>,
-    instances: Vec<Profile>,
+    instances: HashMap<String, Profile>,
     interface: Option<Box<dyn ProfileInterface>>,
     state: ProfileLoaderState
 }
 
 impl ProfileLoader{
     pub fn new(dir: String, name: String) -> ProfileLoader{
-        return ProfileLoader{dir: dir, name: name, library: Vec::new(), instances: Vec::new(), interface: None, state: ProfileLoaderState::Unloaded};
+        return ProfileLoader{dir: dir, name: name, library: Vec::new(), instances: HashMap::new(), interface: None, state: ProfileLoaderState::Unloaded};
     }
 
-    fn create_new_profile(&self) -> io::Result<()>{
+    pub fn try_load(&mut self){
+        _ = self.new_profile();
+        _ = self.compile_profile();
+        unsafe{
+            _ = self.load_library();
+        }
+    }
+
+    fn _create_new_profile(&self) -> io::Result<()>{
         let mut p = Path::new(&self.dir).join(&self.name);
 
         debug!("Creating new profile {}", &self.name);
@@ -69,7 +78,7 @@ impl ProfileLoader{
 
     pub fn new_profile(&mut self) -> io::Result<()>{
         return match &self.state{
-            ProfileLoaderState::Unloaded => match self.create_new_profile(){
+            ProfileLoaderState::Unloaded => match self._create_new_profile(){
                 Ok(x) => {
                     self.state = ProfileLoaderState::Exists;
                     Ok(x)},
@@ -82,7 +91,7 @@ impl ProfileLoader{
         }
     }
 
-    fn attempt_compile(&self) -> Result<String, String>{
+    fn _attempt_compile(&self) -> Result<String, String>{
         let mut p = Path::new(&self.dir).join(&self.name);
         
         if !p.exists() {return Err("Directory does not exists".to_string());}
@@ -141,7 +150,7 @@ impl ProfileLoader{
 
     pub fn compile_profile(&mut self) -> io::Result<()>{
         return match &self.state{
-            ProfileLoaderState::Exists => match self.attempt_compile(){
+            ProfileLoaderState::Exists => match self._attempt_compile(){
                 Ok(x) => {
                     self.state = ProfileLoaderState::Compiled(x);
                     Ok(())
@@ -218,15 +227,19 @@ impl ProfileLoader{
     }
 
     pub fn generate_instance(&mut self, name: String, light_manager: &LightManager) -> Result<(), ()>{
+        if self.instances.contains_key(&name){
+            return Err(());
+        }
+
         return match &self.state{
             ProfileLoaderState::Loaded =>{
                 let interface = match &self.interface {
                     Some(x) => x,
                     None => return Err(())
                 };
-                let mut p = Profile::new( name, false, false, light_manager.new_template());
+                let mut p = Profile::new( name.clone(), false, false, light_manager.new_template());
                 interface.created(&mut p);
-                self.instances.push(p);
+                self.instances.insert(name, p);
                 debug!("Created instance of {}, with name {}", interface.profile_name(), &self.name);
                 Ok(())
             }
@@ -234,12 +247,35 @@ impl ProfileLoader{
         };
     }
 
-    pub fn unload(&mut self) {
-        debug!("Unloading plugins for {}", &self.name);
+    pub fn remove_instance(&mut self, name: String) -> Result<(), ()>{
+        let mut instance = match self.instances.remove(&name){
+            None => return Err(()),
+            Some(x) => x
+        };
+        match &self.interface{
+            Some(x) => x.destroy(&mut instance),
+            None => ()
+        }
+        return Ok(());
+    }
 
-        for profile in self.instances.drain(..) {
-            trace!("Firing on_plugin_unload for {:?}", profile.instance_name());
-            //plugin.on_plugin_unload();
+    pub fn get_instance_names(&self) -> Vec<String>{
+        return self.instances.keys().cloned().collect();
+    }
+
+    pub fn get_instance(&self, name: String) -> Option<&Profile>{
+        return self.instances.get(&name);
+    }
+
+    pub fn get_instance_mut(&mut self, name: String) -> Option<&mut Profile>{
+        return self.instances.get_mut(&name);
+    }
+
+    pub fn unload(&mut self) {
+        debug!("Unloading instances for {}", &self.name);
+
+        for name in self.get_instance_names() {
+            let _ = self.remove_instance(name.clone());
         }
         self.instances.clear();
         self.interface = None;
@@ -259,13 +295,20 @@ impl ProfileLoader{
     }
 
     pub fn update(&mut self){
-        match &self.interface{
+        let interface = match &self.interface{
             None => return,
-            Some(x) => {
-                for i in &mut self.instances{
-                    x.update(i)
-                }
+            Some(x) => x
+        };
+        for (_, i) in &mut self.instances{
+            if i.is_on(){
+                interface.update(i);
             }
+        }
+    }
+
+    pub fn update_light_structure(&mut self, state: &LightManager){
+        for (_, instance) in &mut self.instances{
+            instance.m().sync_structure(state);
         }
     }
 

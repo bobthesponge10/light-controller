@@ -51,22 +51,32 @@ impl LightManager{
         return out;
     }
 
-    pub fn add_light(&mut self, light: LightingTypes){
+    pub fn add_light(&mut self, light: LightingTypes)->u32{
         let next_id = self.get_id();
-        self.lights.insert(next_id, light.clone());
+        self.add_light_manual(light, next_id);
+        return next_id;
+    }
+    fn add_light_manual(&mut self, light: LightingTypes, id: u32){
+        self.lights.insert(id, light.clone());
     }
     pub fn remove_light(&mut self, id: u32){
         self.lights.remove(&id);
     }
+    pub fn get_light(&self, id: u32)->Option<&LightingTypes>{
+        return self.lights.get(&id);
+    }
+    pub fn get_light_mut(&mut self, id: u32)->Option<&mut LightingTypes>{
+        return self.lights.get_mut(&id);
+    }
 
     pub fn clear(&mut self){
         for (_, i) in &mut self.lights{
-            match i {
-                LightingTypes::LightStrip(x) => x.clear(),
-                LightingTypes::Bulb(x) => x.clear(),
-                LightingTypes::BulbGroup(x) => x.clear()
-            }
+            i.clear();
         }
+    }
+
+    pub fn get_all_ids(&self) -> Vec<u32>{
+        return self.lights.keys().cloned().collect();
     }
 
     pub fn get_light_strip_ids(&self) -> Vec<u32> {
@@ -111,12 +121,20 @@ impl LightManager{
         return out;
     }
 
+    pub fn sync_structure(&mut self, state: &LightManager){
+        let mut ids = self.get_all_bulb_ids();
+        let mut other_ids = state.get_all_ids();
+        ids.append(&mut other_ids);
+        for id in ids{
+            let this = self.get_light(id);
+            let base = state.get_light(id);
 
-    pub fn get_light_mut(&mut self, id: u32)->Option<&mut LightingTypes>{
-        return self.lights.get_mut(&id);
-    }
-    pub fn get_light(&self, id: u32)->Option<&LightingTypes>{
-        return self.lights.get(&id);
+            if let None = this{
+                self.add_light_manual(base.unwrap().clone(), id);
+            }else if let None = base{
+                self.remove_light(id);
+            }
+        }
     }
 
 }

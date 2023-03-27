@@ -8,12 +8,13 @@ pub struct Profile{
     name: String,
     on: bool,
     enabled: bool,
-    data: HashMap<String, ProfileData>
+    data: HashMap<String, ProfileData>,
+    error: bool
 }
 
 impl Profile{
     pub fn new( name: String, on: bool, enabled: bool, lights: LightManager) -> Profile{
-        return Profile { name, on, enabled, lights, data: HashMap::new() };
+        return Profile { name, on, enabled, lights, data: HashMap::new(), error: false };
     }
     pub fn instance_name(&self) -> String{
         return self.name.clone();
@@ -31,6 +32,12 @@ impl Profile{
     }
     pub fn is_enabled(&self) -> bool{
         return self.enabled;
+    }
+    pub fn is_error(&self) -> bool{
+        return self.error;
+    }
+    pub fn set_error(&mut self, error: bool){
+        self.error = error;
     }
 
     pub fn get_data(&self, key: &str) -> Option<&ProfileData>{
