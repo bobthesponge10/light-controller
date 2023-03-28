@@ -59,12 +59,6 @@ impl LightStrip{
             }
         }
     }
-    pub fn get_name(&self) -> String{
-        return self.name.clone();
-    }
-    pub fn set_name(&mut self, name: String){
-        self.name = name;
-    }
 }
 impl Bulb{
     pub fn new(ip: String, name: String) -> Bulb{
@@ -78,12 +72,6 @@ impl Bulb{
     }
     pub fn set_ip(&mut self, ip: String){
         self.ip = ip;
-    }
-    pub fn get_name(&self) -> String{
-        return self.name.clone();
-    }
-    pub fn set_name(&mut self, name: String){
-        self.name = name;
     }
 }
 impl BulbGroup{
@@ -104,15 +92,13 @@ impl BulbGroup{
             self.length = self.bulbs.len();
         }
     }
-    pub fn get_name(&self) -> String{
-        return self.name.clone();
+    pub fn get_bulb(&self, index: usize) -> &Bulb{
+        return &self.bulbs[index];
     }
-    pub fn set_name(&mut self, name: String){
-        self.name = name;
+    pub fn get_bulb_mut(&mut self, index: usize) -> &mut Bulb{
+        return &mut self.bulbs[index];
     }
 }
-
-
 
 
 
@@ -123,6 +109,23 @@ impl LightVec for LightStrip{
     fn _get_lights(&self) -> Vec<&Light> {
         return ref_vec_to_vec_ref(&self.lights);
     }
+    fn get_name(&self) -> String{
+        return self.name.clone();
+    }
+    fn set_name(&mut self, name: String){
+        self.name = name;
+    }
+    fn sync_structure(&mut self, state: &Self) {
+        if self.name != state.get_name(){
+            self.set_name(state.get_name());
+        }
+        if self.pin != state.get_pin(){
+            self.set_pin(state.get_pin());
+        }
+        if self.length != state.get_length(){
+            self.set_length(state.get_length());
+        }
+    }
 }
 impl LightVec for Bulb{
     fn _get_lights_mut(&mut self) -> Vec<&mut Light> {
@@ -130,6 +133,20 @@ impl LightVec for Bulb{
     }
     fn _get_lights(&self) -> Vec<&Light> {
         return vec![&self.light];
+    }
+    fn get_name(&self) -> String{
+        return self.name.clone();
+    }
+    fn set_name(&mut self, name: String){
+        self.name = name;
+    }
+    fn sync_structure(&mut self, state: &Self) {
+        if self.name != state.get_name(){
+            self.set_name(state.get_name());
+        }
+        if self.ip != state.get_ip(){
+            self.set_ip(state.get_ip());
+        }
     }
 }
 impl LightVec for BulbGroup{
@@ -148,6 +165,17 @@ impl LightVec for BulbGroup{
             out.append(&mut a);
         }
         return out;
+    }
+    fn get_name(&self) -> String{
+        return self.name.clone();
+    }
+    fn set_name(&mut self, name: String){
+        self.name = name;
+    }
+    fn sync_structure(&mut self, state: &Self) {
+        if self.name != state.get_name(){
+            self.set_name(state.get_name());
+        }
     }
 }
 
@@ -171,6 +199,28 @@ impl LightVec for LightingTypes{
             LightingTypes::LightStrip(x) => x._get_lights(),
             LightingTypes::BulbGroup(x) => x._get_lights(),
             LightingTypes::Bulb(x) => x._get_lights()
+        }
+    }
+    fn get_name(&self) -> String{
+        return match self{
+            LightingTypes::LightStrip(x) => x.get_name(),
+            LightingTypes::BulbGroup(x) => x.get_name(),
+            LightingTypes::Bulb(x) => x.get_name()
+        }
+    }
+    fn set_name(&mut self, name: String){
+        match self{
+            LightingTypes::LightStrip(x) => x.set_name(name),
+            LightingTypes::BulbGroup(x) => x.set_name(name),
+            LightingTypes::Bulb(x) => x.set_name(name)
+        }
+    }
+    fn sync_structure(&mut self, state: &Self) {
+        match (self, state){
+            (LightingTypes::LightStrip(x), LightingTypes::LightStrip(y)) => x.sync_structure(y),
+            (LightingTypes::BulbGroup(x), LightingTypes::BulbGroup(y)) => x.sync_structure(y),
+            (LightingTypes::Bulb(x), LightingTypes::Bulb(y)) => x.sync_structure(y),
+            _ => ()
         }
     }
 }

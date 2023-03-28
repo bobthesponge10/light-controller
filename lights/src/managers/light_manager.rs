@@ -133,6 +133,8 @@ impl LightManager{
                 self.add_light_manual(base.unwrap().clone(), id);
             }else if let None = base{
                 self.remove_light(id);
+            }else{
+                
             }
         }
     }

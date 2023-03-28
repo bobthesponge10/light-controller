@@ -49,19 +49,20 @@ impl System{
         self.profiles.insert(name, p);
         return Ok(());
     }
-
     pub fn remove_profile(&mut self, name: String) -> Result<(), ()>{
         return match self.profiles.remove(&name){
             Some(_) => Ok(()),
             None => Err(())
         };
     }
-
     pub fn get_profile(&self, name: String) -> Option<&ProfileLoader>{
         return self.profiles.get(&name);
     }
     pub fn get_profile_mut(&mut self, name: String) -> Option<&mut ProfileLoader>{
         return self.profiles.get_mut(&name);
+    }
+    pub fn get_profile_names(&self) -> Vec<String>{
+        return self.profiles.keys().cloned().collect();
     }
 
 
@@ -73,7 +74,6 @@ impl System{
             }
         }
     }
-
     pub fn remove_instance(&mut self, profile_name: String, instance_name: String) -> Result<(), ()>{
         match self.profiles.get_mut(&profile_name){
             None => Err(()),
@@ -82,7 +82,6 @@ impl System{
             }
         }
     }
-
     pub fn get_instance(&self, profile_name: String, instance_name: String) -> Option<&Profile>{
         return match self.profiles.get(&profile_name){
             None => None,
@@ -105,6 +104,20 @@ impl System{
             }
         };
     }
+    pub fn get_instances_key(&self) -> Vec<(String, String)>{
+        let mut out = Vec::new();
+        for profile in self.get_profile_names(){
+            let p = match self.get_profile(profile.clone()){
+                None => continue,
+                Some(x) => x
+            };
+            for interface in p.get_instance_names(){
+                out.push((profile.clone(), interface));
+            }
+        }
+
+        return out;
+    }
 
 
     pub fn add_light(&mut self, light: LightingTypes)->u32{
@@ -112,14 +125,19 @@ impl System{
         self.update_light_structure();
         return out;
     }
-
     pub fn remove_light(&mut self, id:u32){
         self.light_state.remove_light(id);
         self.update_light_structure();
     }
-
-    // pub fn get_light()
-
+    pub fn get_light(&self, id:u32) -> Option<&LightingTypes>{
+        return self.light_state.get_light(id);
+    }
+    pub fn get_light_mut(&mut self, id:u32) -> Option<&mut LightingTypes>{
+        return self.light_state.get_light_mut(id);
+    }
+    pub fn get_lights_id(&self) -> Vec<u32>{
+        return self.light_state.get_all_ids();
+    }
 
 
     pub fn update(&mut self){

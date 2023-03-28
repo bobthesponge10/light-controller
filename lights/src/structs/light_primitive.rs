@@ -139,6 +139,9 @@ impl Light{
 pub trait LightVec{
     fn _get_lights_mut(&mut self) -> Vec<&mut Light>;
     fn _get_lights(&self) -> Vec<&Light>;
+    fn get_name(&self) -> String;
+    fn set_name(&mut self, name: String);
+    fn sync_structure(&mut self, state: &Self);
 
     fn set_color(&mut self, color: Color) -> &mut Self{
         for i in self._get_lights_mut(){
